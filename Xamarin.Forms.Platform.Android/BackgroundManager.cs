@@ -12,6 +12,11 @@ namespace Xamarin.Forms.Platform.Android
 			renderer.ElementPropertyChanged += OnElementPropertyChanged;
 			renderer.ElementChanged += OnElementChanged;
 		}
+		public static void Dispose(IVisualElementRenderer renderer)
+		{
+			renderer.ElementPropertyChanged -= OnElementPropertyChanged;
+			renderer.ElementChanged -= OnElementChanged;
+		}
 
 		static void UpdateBackgroundColor(AView Control, VisualElement Element, Color? color = null)
 		{

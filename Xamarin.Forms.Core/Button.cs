@@ -360,7 +360,7 @@ namespace Xamarin.Forms
 			var button = (Button)bo;
 			if (n != null)
 			{
-				var newCommand = n as Command;
+				var newCommand = n as ICommand;
 				newCommand.CanExecuteChanged += button.OnCommandCanExecuteChanged;
 			}
 
@@ -372,7 +372,7 @@ namespace Xamarin.Forms
 			var button = (Button)bo;
 			if (o != null)
 			{
-				((Command)o).CanExecuteChanged -= button.OnCommandCanExecuteChanged;
+				(o as ICommand).CanExecuteChanged -= button.OnCommandCanExecuteChanged;
 			}
 
 			button._commandChanging?.Invoke(bo, new BindableValueChangedEventArgs(bo, o, n));

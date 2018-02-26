@@ -42,6 +42,7 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 		ImageButton Button { get; set; }
 
 		void IImageRendererController.SkipInvalidate() => _skipInvalidate = true;
+		bool IImageRendererController.IsDisposed => _disposed;
 
 		AppCompatImageButton Control => this;
 
@@ -64,6 +65,9 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 
 			if (disposing)
 			{
+
+				ImageElementManager.Dispose(this);
+
 				_tracker?.Dispose();
 				_tracker = null;
 

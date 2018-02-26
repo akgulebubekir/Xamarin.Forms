@@ -212,9 +212,6 @@ namespace Xamarin.Forms
 		event EventHandler<BindableValueChangedEventArgs> IButtonController.CommandChanging { add => _commandChanging += value; remove => _commandChanging -= value; }
 		event EventHandler IButtonController.CommandCanExecuteChanged { add => _commandCanExecuteChanged += value; remove => _commandCanExecuteChanged -= value; }
 
-
-
-
 		void IBorderElement.OnBorderColorPropertyChanged(Color oldValue, Color newValue)
 		{
 		}
@@ -267,7 +264,7 @@ namespace Xamarin.Forms
 			var button = (ImageButton)bo;
 			if (n != null)
 			{
-				var newCommand = n as Command;
+				var newCommand = n as ICommand;
 				newCommand.CanExecuteChanged += button.OnCommandCanExecuteChanged;
 			}
 
@@ -279,7 +276,7 @@ namespace Xamarin.Forms
 			var button = (ImageButton)bo;
 			if (o != null)
 			{
-				((Command)o).CanExecuteChanged -= button.OnCommandCanExecuteChanged;
+				(o as ICommand).CanExecuteChanged -= button.OnCommandCanExecuteChanged;
 			}
 
 			button._commandChanging?.Invoke(bo, new BindableValueChangedEventArgs(bo, o, n));

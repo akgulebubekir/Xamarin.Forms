@@ -11,17 +11,27 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 			renderer.ElementPropertyChanged += OnElementPropertyChanged;
 			renderer.ElementChanged += OnElementChanged;
 		}
+		public static void Dispose(IVisualElementRenderer renderer)
+		{
+			renderer.ElementPropertyChanged -= OnElementPropertyChanged;
+			renderer.ElementChanged -= OnElementChanged;
+		}
 
 		private async static void OnElementChanged(object sender, VisualElementChangedEventArgs e)
 		{
 			var renderer = (sender as IVisualElementRenderer);
-			var view = (ImageView)renderer.View;
-			var newImageElementManager = (IImageController)e.NewElement;
-			var oldImageElementManager = (IImageController)e.OldElement;
+			var view = renderer.View as ImageView;
+			var newImageElementManager = e.NewElement as IImageController;
+			var oldImageElementManager = e.OldElement as IImageController;
+			var rendererController = renderer as IImageRendererController;
 
-			await TryUpdateBitmap(view, newImageElementManager, oldImageElementManager);
-			UpdateAspect(view, newImageElementManager, oldImageElementManager);
-			ElevationHelper.SetElevation(view, renderer.Element);
+			await TryUpdateBitmap(rendererController, view, newImageElementManager, oldImageElementManager);
+			UpdateAspect(rendererController, view, newImageElementManager, oldImageElementManager);
+
+			if (!rendererController.IsDisposed)
+			{
+				ElevationHelper.SetElevation(view, renderer.Element);
+			}
 		}
 
 		private async static void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -30,18 +40,18 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 			var ImageElementManager = (IImageController)renderer.Element;
 			if (e.PropertyName == ImageElementManager.SourceProperty.PropertyName)
 			{ 
-				await TryUpdateBitmap((ImageView)renderer.View, (IImageController)renderer.Element);
+				await TryUpdateBitmap(renderer as IImageRendererController, (ImageView)renderer.View, (IImageController)renderer.Element);
 			}
 			else if (e.PropertyName == ImageElementManager.AspectProperty.PropertyName)
 			{ 
-				UpdateAspect((ImageView)renderer.View, (IImageController)renderer.Element);
+				UpdateAspect(renderer as IImageRendererController, (ImageView)renderer.View, (IImageController)renderer.Element);
 			}
 		}
 
 
-		async static Task TryUpdateBitmap(ImageView Control, IImageController newImage, IImageController previous = null)
+		async static Task TryUpdateBitmap(IImageRendererController rendererController, ImageView Control, IImageController newImage, IImageController previous = null)
 		{
-			if (newImage == null)
+			if (newImage == null || rendererController.IsDisposed)
 			{
 				return;
 			}
@@ -49,9 +59,9 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 			await Control.UpdateBitmap(newImage, previous);
 		}
 
-		static void UpdateAspect(ImageView Control, IImageController newImage, IImageController previous = null)
+		static void UpdateAspect(IImageRendererController rendererController, ImageView Control, IImageController newImage, IImageController previous = null)
 		{
-			if (newImage == null)
+			if (newImage == null || rendererController.IsDisposed)
 			{
 				return;
 			}

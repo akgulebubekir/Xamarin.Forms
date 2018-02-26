@@ -19,6 +19,7 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 		VisualElementRenderer _visualElementRenderer;
 		readonly MotionEventHelper _motionEventHelper = new MotionEventHelper();
 
+		bool IImageRendererController.IsDisposed => _disposed;
 		protected override void Dispose(bool disposing)
 		{
 			if (_disposed)
@@ -28,6 +29,9 @@ namespace Xamarin.Forms.Platform.Android.FastRenderers
 
 			if (disposing)
 			{
+				ImageElementManager.Dispose(this);
+				BackgroundManager.Dispose(this);
+
 				if (_visualElementTracker != null)
 				{
 					_visualElementTracker.Dispose();
