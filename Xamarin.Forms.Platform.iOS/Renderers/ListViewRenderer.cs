@@ -243,6 +243,7 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateIsRefreshing();
 				UpdateSeparatorColor();
 				UpdateSeparatorVisibility();
+				UpdateSelectionMode();
 
 				var selected = e.NewElement.SelectedItem;
 				if (selected != null)
@@ -263,6 +264,7 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				_estimatedRowHeight = false;
 				Control.Source = _dataSource = Element.HasUnevenRows ? new UnevenListViewDataSource(_dataSource) : new ListViewDataSource(_dataSource);
+				Control.ReloadData();
 			}
 			else if (e.PropertyName == Xamarin.Forms.ListView.IsPullToRefreshEnabledProperty.PropertyName)
 				UpdatePullToRefreshEnabled();
@@ -278,6 +280,8 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateFooter();
 			else if (e.PropertyName == "RefreshAllowed")
 				UpdatePullToRefreshEnabled();
+			else if (e.PropertyName == Xamarin.Forms.ListView.SelectionModeProperty.PropertyName)
+				UpdateSelectionMode();
 		}
 
 		NSIndexPath[] GetPaths(int section, int index, int count)
@@ -555,7 +559,8 @@ namespace Xamarin.Forms.Platform.iOS
 					Control.EndUpdates();
 
 					if (_estimatedRowHeight && TemplatedItemsView.TemplatedItems.Count == 0)
-						_estimatedRowHeight = false;
+						InvalidateCellCache();
+
 
 					break;
 
@@ -579,7 +584,7 @@ namespace Xamarin.Forms.Platform.iOS
 					Control.EndUpdates();
 
 					if (_estimatedRowHeight && e.OldStartingIndex == 0)
-						_estimatedRowHeight = false;
+						InvalidateCellCache();
 
 					break;
 
@@ -591,15 +596,22 @@ namespace Xamarin.Forms.Platform.iOS
 					Control.EndUpdates();
 
 					if (_estimatedRowHeight && e.OldStartingIndex == 0)
-						_estimatedRowHeight = false;
+						InvalidateCellCache();
+
 
 					break;
 
 				case NotifyCollectionChangedAction.Reset:
-					_estimatedRowHeight = false;
+					InvalidateCellCache();
 					Control.ReloadData();
 					return;
 			}
+		}
+
+		void InvalidateCellCache()
+		{
+			_estimatedRowHeight = false;
+			_dataSource.InvalidatePrototypicalCellCache();
 		}
 
 		void UpdatePullToRefreshEnabled()
@@ -645,6 +657,18 @@ namespace Xamarin.Forms.Platform.iOS
 					throw new ArgumentOutOfRangeException();
 			}
 		}
+
+		void UpdateSelectionMode()
+		{
+			if (Element.SelectionMode == ListViewSelectionMode.None)
+			{
+				Element.SelectedItem = null;
+				var selectedIndexPath = Control.IndexPathForSelectedRow;
+				if (selectedIndexPath != null)
+					Control.DeselectRow(selectedIndexPath, false);
+			}
+		}
+
 
 		internal class UnevenListViewDataSource : ListViewDataSource
 		{
@@ -706,6 +730,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			internal override void InvalidatePrototypicalCellCache()
 			{
+				ClearPrototype();
 				_prototypicalCellByTypeOrDataTemplate.Clear();
 			}
 
@@ -799,14 +824,21 @@ namespace Xamarin.Forms.Platform.iOS
 
 				if (disposing)
 				{
-					if (_prototype != null)
-					{
-						_prototype.Dispose();
-						_prototype = null;
-					}
+					ClearPrototype();
 				}
 
 				base.Dispose(disposing);
+			}
+
+			void ClearPrototype()
+			{
+				if (_prototype != null)
+				{
+					var element = _prototype.Element;
+					element?.ClearValue(Platform.RendererProperty);
+					_prototype?.Dispose();
+					_prototype = null;
+				}
 			}
 		}
 
@@ -1034,6 +1066,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 				SetCellBackgroundColor(cell, UIColor.Clear);
 
+				if (List.SelectionMode == ListViewSelectionMode.None)
+					tableView.DeselectRow(indexPath, false);
+
 				_selectionFromNative = true;
 
 				tableView.EndEditing(true);
@@ -1167,16 +1202,27 @@ namespace Xamarin.Forms.Platform.iOS
 
 			void UpdateShortNameListener()
 			{
+				WatchShortNameCollection(List.IsGroupingEnabled);
+			}
+
+			void WatchShortNameCollection(bool watch)
+			{
 				var templatedList = TemplatedItemsView.TemplatedItems;
-				if (List.IsGroupingEnabled)
+
+				if (templatedList.ShortNames == null)
 				{
-					if (templatedList.ShortNames != null)
-						((INotifyCollectionChanged)templatedList.ShortNames).CollectionChanged += OnShortNamesCollectionChanged;
+					return;
+				}
+
+				var incc = (INotifyCollectionChanged)templatedList.ShortNames;
+
+				if (watch)
+				{
+					incc.CollectionChanged += OnShortNamesCollectionChanged;
 				}
 				else
 				{
-					if (templatedList.ShortNames != null)
-						((INotifyCollectionChanged)templatedList.ShortNames).CollectionChanged -= OnShortNamesCollectionChanged;
+					incc.CollectionChanged -= OnShortNamesCollectionChanged;
 				}
 			}
 
@@ -1190,6 +1236,7 @@ namespace Xamarin.Forms.Platform.iOS
 					if (List != null)
 					{
 						List.ItemSelected -= OnItemSelected;
+						WatchShortNameCollection(false);
 						List = null;
 					}
 
